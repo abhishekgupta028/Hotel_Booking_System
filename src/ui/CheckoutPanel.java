@@ -11,7 +11,6 @@ import java.util.List;
 import dao.RoomDAO;
 import model.Room;
 
-
 public class CheckoutPanel extends JPanel {
     private RoomDAO roomDAO;
     private DefaultListModel<Room> bookedRoomListModel;
@@ -19,19 +18,20 @@ public class CheckoutPanel extends JPanel {
 
     public CheckoutPanel(Connection conn) {
         this.roomDAO = new RoomDAO(conn);
-        setLayout(new BorderLayout());
+        setLayout(new BorderLayout(10, 10));
 
-        // List to display booked rooms
+        // List model and JList to show booked rooms
         bookedRoomListModel = new DefaultListModel<>();
         bookedRoomList = new JList<>(bookedRoomListModel);
+        bookedRoomList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         add(new JScrollPane(bookedRoomList), BorderLayout.CENTER);
 
-        // Refresh button
+        // Refresh button to reload booked rooms
         JButton refreshButton = new JButton("Refresh Booked Rooms");
         refreshButton.addActionListener(e -> loadBookedRooms());
         add(refreshButton, BorderLayout.NORTH);
 
-        // Double-click to checkout room
+        // Double-click to checkout
         bookedRoomList.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent evt) {
                 if (evt.getClickCount() == 2) {
@@ -39,23 +39,27 @@ public class CheckoutPanel extends JPanel {
                     if (selectedRoom != null) {
                         int confirm = JOptionPane.showConfirmDialog(
                                 CheckoutPanel.this,
-                                "Do you want to check out room " + selectedRoom.getRoomNumber() + "?",
+                                "Do you want to check out Room " + selectedRoom.getRoomNumber() + "?",
                                 "Confirm Checkout",
                                 JOptionPane.YES_NO_OPTION
                         );
 
                         if (confirm == JOptionPane.YES_OPTION) {
                             try {
-                                boolean checkedOut = roomDAO.checkoutRoom(selectedRoom.getId());
-                                if (checkedOut) {
-                                    JOptionPane.showMessageDialog(CheckoutPanel.this, "Room checked out successfully!");
-                                    loadBookedRooms();
+                                boolean success = roomDAO.checkoutRoom(selectedRoom.getId());
+                                if (success) {
+                                    JOptionPane.showMessageDialog(CheckoutPanel.this,
+                                            "Room checked out successfully!");
+                                    loadBookedRooms();  // Refresh list
                                 } else {
-                                    JOptionPane.showMessageDialog(CheckoutPanel.this, "Failed to check out room.");
+                                    JOptionPane.showMessageDialog(CheckoutPanel.this,
+                                            "Failed to check out the room.", "Error", JOptionPane.ERROR_MESSAGE);
                                 }
                             } catch (SQLException e) {
                                 e.printStackTrace();
-                                JOptionPane.showMessageDialog(CheckoutPanel.this, "Error checking out room: " + e.getMessage());
+                                JOptionPane.showMessageDialog(CheckoutPanel.this,
+                                        "Error during checkout: " + e.getMessage(),
+                                        "Database Error", JOptionPane.ERROR_MESSAGE);
                             }
                         }
                     }
@@ -63,13 +67,12 @@ public class CheckoutPanel extends JPanel {
             }
         });
 
-
-        // Load booked rooms initially
+        // Load booked rooms when panel is initialized
         loadBookedRooms();
     }
 
-    // ✅ FIXED: Removed `throws SQLException` from here
-    private void loadBookedRooms() {
+    // Public method so it can be called externally to refresh the panel
+    public void loadBookedRooms() {
         try {
             List<Room> bookedRooms = roomDAO.getRoomsByStatus("Booked");
             bookedRoomListModel.clear();
@@ -78,7 +81,9 @@ public class CheckoutPanel extends JPanel {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Error loading booked rooms: " + e.getMessage());
+            JOptionPane.showMessageDialog(this,
+                    "Error loading booked rooms: " + e.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 }

@@ -1,81 +1,72 @@
 package ui;
 
+import dao.RoomDAO;
+import model.Room;
+
 import javax.swing.*;
 import java.awt.*;
-import model.Room;
-import dao.RoomDAO;
-import util.DatabaseUtil;
+import java.sql.Connection;
 
 public class AddRoomPanel extends JPanel {
-
     private JTextField roomNumberField;
-    private JTextField typeField;
-    private JTextField statusField;
+    private JTextField roomTypeField;
     private JTextField priceField;
+    private JButton addButton;
 
-    public AddRoomPanel() {
-        setLayout(new BorderLayout());
+    private RoomDAO roomDAO;
 
-        // Panel to hold form fields
-        JPanel formPanel = new JPanel(new GridLayout(5, 2, 10, 10));
+    public AddRoomPanel(Connection connection) {
+        this.roomDAO = new RoomDAO(connection);
 
-        formPanel.add(new JLabel("Room Number:"));
+        setLayout(new GridLayout(4, 2, 10, 10));
+
+        add(new JLabel("Room Number:"));
         roomNumberField = new JTextField();
-        formPanel.add(roomNumberField);
+        add(roomNumberField);
 
-        formPanel.add(new JLabel("Type:"));
-        typeField = new JTextField();
-        formPanel.add(typeField);
+        add(new JLabel("Room Type:"));
+        roomTypeField = new JTextField();
+        add(roomTypeField);
 
-        formPanel.add(new JLabel("Status:"));
-        statusField = new JTextField();
-        formPanel.add(statusField);
-
-        formPanel.add(new JLabel("Price:"));
+        add(new JLabel("Price:"));
         priceField = new JTextField();
-        formPanel.add(priceField);
+        add(priceField);
 
-        JButton addButton = new JButton("Add Room");
+        addButton = new JButton("Add Room");
         addButton.addActionListener(e -> addRoom());
-
-        formPanel.add(new JLabel()); // empty cell
-        formPanel.add(addButton);
-
-        add(formPanel, BorderLayout.CENTER);
+        add(new JLabel()); // empty label for layout
+        add(addButton);
     }
 
     private void addRoom() {
+        String roomNumber = roomNumberField.getText().trim();
+        String roomType = roomTypeField.getText().trim();
+        String priceText = priceField.getText().trim();
+
+        if (roomNumber.isEmpty() || roomType.isEmpty() || priceText.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please fill all fields", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        double price;
         try {
-            String roomNumber = roomNumberField.getText().trim();
-            String type = typeField.getText().trim();
-            String status = statusField.getText().trim();
-            double price = Double.parseDouble(priceField.getText().trim());
-
-            Room room = new Room(0, roomNumber, type, status, price);
-            RoomDAO roomDAO = new RoomDAO(DatabaseUtil.getConnection());
-            boolean success = roomDAO.addRoom(room);
-
-            if (success) {
-                JOptionPane.showMessageDialog(this, "Room added successfully!");
-                clearFields();
-            } else {
-                JOptionPane.showMessageDialog(this, "Failed to add room.", "Error", JOptionPane.ERROR_MESSAGE);
-            }
-
+            price = Double.parseDouble(priceText);
         } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Invalid price entered.", "Input Error", JOptionPane.WARNING_MESSAGE);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            JOptionPane.showMessageDialog(this, "An error occurred: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Invalid price. Enter a valid number.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        Room room = new Room(0, roomNumber, roomType, price, "Available"); // assuming id=0 means new room, status "Available"
+
+        boolean success = roomDAO.addRoom(room);
+
+        if (success) {
+            JOptionPane.showMessageDialog(this, "Room added successfully!");
+            roomNumberField.setText("");
+            roomTypeField.setText("");
+            priceField.setText("");
+        } else {
+            JOptionPane.showMessageDialog(this, "Failed to add room.", "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
-
-    private void clearFields() {
-        roomNumberField.setText("");
-        typeField.setText("");
-        statusField.setText("");
-        priceField.setText("");
-    }
-
-
 }

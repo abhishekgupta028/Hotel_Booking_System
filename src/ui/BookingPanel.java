@@ -6,6 +6,8 @@ import model.Booking;
 import model.Room;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.sql.Connection;
@@ -26,6 +28,7 @@ public class BookingPanel extends JPanel {
 
     private RoomDAO roomDAO;
     private BookingDAO bookingDAO;
+    private CheckoutPanel checkoutPanel;
 
     public BookingPanel(Connection connection) {
         this.roomDAO = new RoomDAO(connection);
@@ -34,8 +37,10 @@ public class BookingPanel extends JPanel {
         setLayout(new BorderLayout(10, 10));
 
         JPanel inputPanel = new JPanel(new GridLayout(7, 2, 10, 10));
+
         inputPanel.add(new JLabel("Select Room:"));
         roomComboBox = new JComboBox<>();
+        roomComboBox.addActionListener(e -> calculateTotalCost());
         inputPanel.add(roomComboBox);
 
         inputPanel.add(new JLabel("Customer Name:"));
@@ -48,15 +53,25 @@ public class BookingPanel extends JPanel {
 
         inputPanel.add(new JLabel("Check-in Date (YYYY-MM-DD):"));
         checkInField = new JTextField();
+        checkInField.getDocument().addDocumentListener(new SimpleDocumentListener() {
+            public void update(DocumentEvent e) {
+                calculateTotalCost();
+            }
+        });
         inputPanel.add(checkInField);
 
         inputPanel.add(new JLabel("Check-out Date (YYYY-MM-DD):"));
         checkOutField = new JTextField();
+        checkOutField.getDocument().addDocumentListener(new SimpleDocumentListener() {
+            public void update(DocumentEvent e) {
+                calculateTotalCost();
+            }
+        });
         inputPanel.add(checkOutField);
 
         inputPanel.add(new JLabel("Total Cost:"));
         totalCostField = new JTextField();
-        totalCostField.setEditable(false); // Optional: auto-calculated
+        totalCostField.setEditable(false);
         inputPanel.add(totalCostField);
 
         bookButton = new JButton("Book Room");
@@ -75,6 +90,10 @@ public class BookingPanel extends JPanel {
 
         refreshAvailableRooms();
         refreshBookings();
+    }
+
+    public void setCheckoutPanel(CheckoutPanel checkoutPanel) {
+        this.checkoutPanel = checkoutPanel;
     }
 
     private void refreshAvailableRooms() {
@@ -131,7 +150,7 @@ public class BookingPanel extends JPanel {
         }
 
         long days = ChronoUnit.DAYS.between(checkIn, checkOut);
-        double costPerDay = selectedRoom.getPrice(); // Make sure Room has a `getPrice()` method
+        double costPerDay = selectedRoom.getPrice();
         double totalCost = days * costPerDay;
 
         Booking booking = new Booking(0, selectedRoom.getId(), customer, contact, checkIn, checkOut, totalCost);
@@ -144,13 +163,68 @@ public class BookingPanel extends JPanel {
             refreshAvailableRooms();
             refreshBookings();
 
+            if (checkoutPanel != null) {
+                checkoutPanel.loadBookedRooms();
+            }
+
             customerNameField.setText("");
             contactField.setText("");
             checkInField.setText("");
             checkOutField.setText("");
-            totalCostField.setText(String.valueOf(totalCost));
+            totalCostField.setText("");
         } else {
             JOptionPane.showMessageDialog(this, "Booking failed!", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void calculateTotalCost() {
+        try {
+            Room selectedRoom = (Room) roomComboBox.getSelectedItem();
+            if (selectedRoom == null) {
+                totalCostField.setText("");
+                return;
+            }
+
+            String checkInText = checkInField.getText().trim();
+            String checkOutText = checkOutField.getText().trim();
+
+            if (!checkInText.isEmpty() && !checkOutText.isEmpty()) {
+                LocalDate checkIn = LocalDate.parse(checkInText);
+                LocalDate checkOut = LocalDate.parse(checkOutText);
+
+                if (checkOut.isAfter(checkIn)) {
+                    long days = ChronoUnit.DAYS.between(checkIn, checkOut);
+                    double costPerDay = selectedRoom.getPrice();
+                    double totalCost = days * costPerDay;
+                    totalCostField.setText(String.format("%.2f", totalCost));
+                } else {
+                    totalCostField.setText("0");
+                }
+            } else {
+                totalCostField.setText("");
+            }
+        } catch (Exception e) {
+            totalCostField.setText("");
+        }
+    }
+
+    // Inner class to simplify document listeners
+    public abstract static class SimpleDocumentListener implements DocumentListener {
+        public abstract void update(DocumentEvent e);
+
+        @Override
+        public void insertUpdate(DocumentEvent e) {
+            update(e);
+        }
+
+        @Override
+        public void removeUpdate(DocumentEvent e) {
+            update(e);
+        }
+
+        @Override
+        public void changedUpdate(DocumentEvent e) {
+            update(e);
         }
     }
 }

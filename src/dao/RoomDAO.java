@@ -7,26 +7,41 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class RoomDAO {
-    private final Connection connection;
+    private Connection conn;
 
-    public RoomDAO(Connection connection) {
-        this.connection = connection;
+    public RoomDAO(Connection conn) {
+        this.conn = conn;
     }
 
-    public List<Room> getAvailableRooms() {
+    public boolean addRoom(Room room) {
+        String sql = "INSERT INTO rooms (room_number, type, price, status) VALUES (?, ?, ?, ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, room.getRoomNumber());
+            stmt.setString(2, room.getType());
+            stmt.setDouble(3, room.getPrice());
+            stmt.setString(4, room.getStatus());
+            int rows = stmt.executeUpdate();
+            return rows > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // Get all rooms with a particular status
+    public List<Room> getRoomsByStatus(String status) {
         List<Room> rooms = new ArrayList<>();
-        String sql = "SELECT * FROM rooms WHERE is_available = true";
-
-        try (PreparedStatement stmt = connection.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-
+        String sql = "SELECT * FROM rooms WHERE status = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, status);
+            ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
                 Room room = new Room(
                         rs.getInt("id"),
                         rs.getString("room_number"),
                         rs.getString("type"),
-                        rs.getString("status"),
-                        rs.getDouble("price")
+                        rs.getDouble("price"),
+                        rs.getString("status")
                 );
                 rooms.add(room);
             }
@@ -36,76 +51,33 @@ public class RoomDAO {
         return rooms;
     }
 
-    public List<Room> getRoomsByStatus(String status) {
-        List<Room> rooms = new ArrayList<>();
-        String sql = "SELECT * FROM rooms WHERE status = ?";
+    // Get all available rooms (helper method)
+    public List<Room> getAvailableRooms() {
+        return getRoomsByStatus("Available");
+    }
 
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+    // Checkout room: set status from "Booked" to "Available"
+    public boolean checkoutRoom(int roomId) throws SQLException {
+        String sql = "UPDATE rooms SET status = 'Available' WHERE id = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, roomId);
+            int updatedRows = stmt.executeUpdate();
+            return updatedRows > 0;
+        }
+    }
+
+    // Set room availability status - true for Available, false for Booked
+    public boolean setRoomAvailability(int roomId, boolean isAvailable) {
+        String status = isAvailable ? "Available" : "Booked";
+        String sql = "UPDATE rooms SET status = ? WHERE id = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, status);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    Room room = new Room(
-                            rs.getInt("id"),
-                            rs.getString("room_number"),
-                            rs.getString("type"),
-                            rs.getString("status"),
-                            rs.getDouble("price")
-                    );
-                    rooms.add(room);
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return rooms;
-    }
-
-    public boolean addRoom(Room room) {
-        String sql = "INSERT INTO rooms (room_number, type, status, price, is_available) VALUES (?, ?, ?, ?, ?)";
-
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, room.getRoomNumber());
-            stmt.setString(2, room.getType());
-            stmt.setString(3, room.getStatus());
-            stmt.setDouble(4, room.getPrice());
-            stmt.setBoolean(5, true); // assuming new rooms are available by default
-            int rows = stmt.executeUpdate();
-            return rows > 0;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    public boolean setRoomAvailability(int roomId, boolean available) {
-        String sql = "UPDATE rooms SET is_available = ? WHERE id = ?";
-
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setBoolean(1, available);
             stmt.setInt(2, roomId);
             int rows = stmt.executeUpdate();
             return rows > 0;
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
-        }
-    }
-
-    // Method to checkout a room (make it available and update status)
-    public boolean checkoutRoom(int roomId) throws SQLException {
-        String sql = "UPDATE rooms SET status = 'Available', is_available = true WHERE id = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setInt(1, roomId);
-            return stmt.executeUpdate() > 0;
-        }
-    }
-
-    // You may want to add a method to book a room (set status = 'Booked' and is_available = false)
-    public boolean bookRoom(int roomId) throws SQLException {
-        String sql = "UPDATE rooms SET status = 'Booked', is_available = false WHERE id = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setInt(1, roomId);
-            return stmt.executeUpdate() > 0;
         }
     }
 }
