@@ -6,13 +6,16 @@ public class Booking {
     private int id;
     private int roomId;
     private String customerName;
-    private String contact;            // ✅ New field
+    private String contact;
     private LocalDate checkInDate;
     private LocalDate checkOutDate;
-    private double totalCost;         // ✅ New field
+    private double totalCost;
 
-    // ✅ Updated constructor with new fields
-    public Booking(int id, int roomId, String customerName, String contact, LocalDate checkInDate, LocalDate checkOutDate, double totalCost) {
+    // This field is used for displaying room number in the UI
+    private String roomNumber;
+
+    public Booking(int id, int roomId, String customerName, String contact,
+                   LocalDate checkInDate, LocalDate checkOutDate, double totalCost) {
         this.id = id;
         this.roomId = roomId;
         this.customerName = customerName;
@@ -22,17 +25,6 @@ public class Booking {
         this.totalCost = totalCost;
     }
 
-    // ✅ Overloaded constructor (without id, for inserting new bookings)
-    public Booking(int roomId, String customerName, String contact, LocalDate checkInDate, LocalDate checkOutDate, double totalCost) {
-        this.roomId = roomId;
-        this.customerName = customerName;
-        this.contact = contact;
-        this.checkInDate = checkInDate;
-        this.checkOutDate = checkOutDate;
-        this.totalCost = totalCost;
-    }
-
-    // ✅ Getters and setters
     public int getId() {
         return id;
     }
@@ -61,31 +53,17 @@ public class Booking {
         return totalCost;
     }
 
-    public void setId(int id) {
-        this.id = id;
+    public String getRoomNumber() {
+        return roomNumber;
     }
 
-    public void setRoomId(int roomId) {
-        this.roomId = roomId;
+    public void setRoomNumber(String roomNumber) {
+        this.roomNumber = roomNumber;
     }
 
-    public void setCustomerName(String customerName) {
-        this.customerName = customerName;
-    }
-
-    public void setContact(String contact) {
-        this.contact = contact;
-    }
-
-    public void setCheckInDate(LocalDate checkInDate) {
-        this.checkInDate = checkInDate;
-    }
-
-    public void setCheckOutDate(LocalDate checkOutDate) {
-        this.checkOutDate = checkOutDate;
-    }
-
-    public void setTotalCost(double totalCost) {
-        this.totalCost = totalCost;
+    @Override
+    public String toString() {
+        return "Room " + roomNumber + " booked by " + customerName +
+                " from " + checkInDate + " to " + checkOutDate;
     }
 }
